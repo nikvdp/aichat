@@ -7,7 +7,8 @@ use crate::config::{Config, SharedConfig};
 use anyhow::{Context, Result};
 use reedline::{
     default_emacs_keybindings, ColumnarMenu, DefaultCompleter, Emacs, FileBackedHistory, KeyCode,
-    KeyModifiers, Keybindings, Reedline, ReedlineEvent, ReedlineMenu,
+    KeyModifiers, Keybindings, Reedline, ReedlineEvent, ReedlineMenu, default_vi_insert_keybindings,
+    Vi, default_vi_normal_keybindings, EditMode
 };
 
 const MENU_NAME: &str = "completion_menu";
@@ -16,6 +17,8 @@ pub struct Repl {
     pub(crate) editor: Reedline,
     pub(crate) prompt: ReplPrompt,
 }
+
+const USE_VI: bool = true;
 
 impl Repl {
     pub fn init(config: SharedConfig) -> Result<Self> {
@@ -29,7 +32,16 @@ impl Repl {
         let keybindings = Self::create_keybindings();
         let history = Self::create_history()?;
         let menu = Self::create_menu();
-        let edit_mode = Box::new(Emacs::new(keybindings));
+        let edit_mode: Box<dyn EditMode>;
+        if USE_VI {
+            edit_mode = Box::new(Vi::new(
+                default_vi_insert_keybindings(),
+                default_vi_normal_keybindings(),
+            ));
+        }
+        else {
+            edit_mode = Box::new(Emacs::new(keybindings));
+        }
         let mut editor = Reedline::create()
             .with_completer(Box::new(completer))
             .with_highlighter(Box::new(highlighter))
